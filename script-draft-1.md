@@ -56,11 +56,11 @@ Bitboards are piece-centric, similar to the piece-list technique; however, inste
 
 > *showing a set and it's associated chess board*
 
-A board has exactly 64 squares. We start our process by classifying a single finite set of exactly 64 entries, with each entry being associated with a square on the board, and each entry holding a binary state of either 1 or 0. Each entry's value represents a square's *vacancy*. So, for example, if we say that the set as a whole represents the squares on a board that a knight occupies, the start of the game might look like this:
+A board has exactly 64 squares. We start our process by classifying a single finite set of exactly 64 entries, with each entry being associated with a square on the board and a binary state of either 1 or 0. Each entry's value represents a square's *vacancy*. So, for example, if we say that the set as a whole represents the squares on a board that a knight occupies, the start of the game might look like this:
 
 > *the set and associated chess board appears the same as the starting squares of the knight*
 
-In conjunction with sets of differing classifications and set algebra, we can represent more complex relations. For example, suppose we have two sets, A and B. A is the vacancy set of all black pieces on the board, and B is a vacancy set of all rooks on the board. By taking the set intersection of both A and B, we are, by definition returning everything in common of both sets. In this case, it means the intersection of sets A and B shows all black rooks on the board. In fact, this type of set intersection is a very common operation that will occur within our desired representation.
+By performing set albebra on sets of differing classifications, we can represent more complex relations. For example, suppose we have two sets, A and B. A is the vacancy set of all black pieces on the board, and B is a vacancy set of all rooks on the board. By taking the set intersection of both A and B, we are, by definition returning everything in common of both sets. In this case, it means the intersection of sets A and B shows all black rooks on the board. In fact, this type of set intersection is a very common operation that will occur, considering the manner in which we define our position's bitboards.
 
 > *showing what the set intersection would look like*
 
@@ -68,11 +68,11 @@ This set's most common hardware representation is a single, 64-bit unsigned inte
 
 > *something*
 
-By this technique, only eight bitboards are necessary to fully represent the vacancy of every single piece on a chess board. Six are required for each type of piece: pawn, knight, bishop, rook, queen, and king. Then two more for each color, so black and white sides. Through set operations, we can determine all the information we need for evaluation and makemove functions down the line.
+By this technique, only eight bitboards are necessary to fully represent the vacancy of every single piece on a chess board. Six are required for each type of piece: pawn, knight, bishop, rook, queen, and king. Then two more for each color: the black and white sides. Through set operations, we can determine all the information we need for evaluation and makemove functions down the line.
 
 ## Move Generation
 
-Now that we have a way to represent all pieces on the board, we can generate the movement of our pieces. There are many strategies on how to generate the movement of pieces on a board, and what I will be discussing will be the generation of 'pseudo-legal' moves. Pseudo-legal moves are moves in which you generate moves while not taking into account the exact legality of the move - ignoring things such as king safety via pins and checks. I would personally categorize a chess piece's move generation algorithm into one of three categories: look-up pieces, sliding pieces, and pawns. The first category I would like to talk about are look-up pieces.
+Now that we have a way to represent all pieces on the board, it is possible for us to generate their movement. There are many strategies on how to generate the movement of pieces on a board, and what I will be discussing will be the generation of 'pseudo-legal' moves. Pseudo-legal moves are moves in which you generate moves while not taking into account the exact legality of the move - ignoring things such as king safety via pins and checks. I would personally categorize a chess piece's move generation algorithm into one of three categories: look-up pieces, sliding pieces, and pawns. The first category I would like to talk about are look-up pieces.
 
 Look-up pieces are pieces in which it is not necessary to receive information from other pieces on the board - friendly or otherwise - to properly compute its pseudo-legal destination squares. Knights and kings are the only pieces categorized in this fashion. There are really only two feasible ways to implement a move generation algorithm for look-up pieces. The first is by calculation, where you perform bit shifting operations relative to the piece's origin square. The second option is to pre-calculate all destination squares indexed by its origin. In this situation, there is no real reason to choose to calculate the destination squares as opposed to doing it pre-calculated, unless there is very specific space implications. Implementing this is the most straightforward of the three categories of move generation algorithms and will not be discussed in further detail.
 
@@ -82,7 +82,7 @@ I would now like to talk about sliding pieces. Sliding pieces are characterized 
 
 ## Magic Bitboards
 
-A single lookup for every combination of origin square, friendly square, and enemy square input? If we were to have a single lookup table for every possible combination of these inputs, we would end up with astronomically large tables taking up quintillions of Zettabytes of space; however, there are many strategies in our toolbet we can use to optimize the space we need.
+A single lookup for every combination of origin square, friendly square, and enemy square input? If we were to have a single lookup table for every possible combination of these inputs, we would end up with astronomically large tables taking up quintillions of Zettabytes of space! In comparison, the total of both the knight and king lookup tables required a total of 1 Kilobyte of space. Luckily, there are many strategies in our toolbet we can use to optimize the space we require for our lookup table.
 
 > *Notes for the size of lookup table:* \
 > *Number of possible origin squares = 64* \
@@ -91,7 +91,7 @@ A single lookup for every combination of origin square, friendly square, and ene
 > *Number of bits used in each array entry = 64* \
 > *Total = 64 * 64 * 2^64 * 2^64*
 
-When casting the direction of a sliding piece, it is not entirely necessary to take in the input of both friendly and enemy pieces. Both friendly and enemy pieces act as blockers to the piece we are moving. The only difference is that if it were an enemy piece, the player can capture that piece while moving to that square, while a friendly piece cannot be captured. With this logic, we only need the origin square and a bitboard of *blockers* which hold the union of all friendly pieces and enemy pieces. We can pretend in this case that all blockers are capturable, and subtract all friendly pieces from the resulting attack squares. By doing this, we have reduced our space requirement to a mere eight Zettabytes! In comparison, the total of both the knight and king lookup tables required a total of 1 Kilobyte of space. Luckily, we can still do much better.
+When casting the direction of a sliding piece, it is not entirely necessary to take in the input of both friendly and enemy pieces. Both friendly and enemy pieces act as blockers to the piece we are moving. The only difference is that if it were an enemy piece, the player can capture that piece while moving to that square, while a friendly piece cannot be captured. With this logic, we only need the origin square and a bitboard of *blockers* which hold the union of all friendly pieces and enemy pieces. We can pretend in this case that all blockers are capturable, and subtract all friendly pieces from the resulting attack squares. By doing this, we have reduced our space requirement to a mere eight Zettabytes! Once again, however, there is room for optimization.
 
 > *Notes for the size of lookup table:* \
 > *Number of possible origin squares = 64* \
@@ -109,7 +109,7 @@ Our next observation might be that our lookup table is indexing this array by ma
 
 While two Megabytes is a perfectly reasonable amount of space to require for a lookup table, we unfortunately now have a new problem. When returning our masked bits, the possible configurations in which the spaces are occupied is spread across the entire 64-bit range of our masked blocker bitboard. The solution to this problem is through the use of a hashing algorithm! In essence, a hashing algorithm takes a *key* (our masked blocker-bitboard) and returns the *value* associated with that key (our destination squares). What the algorithm itself does is turn our key into an index with a smaller size. In our case, this allows us to flatten out our input into a size manageable enough to store in a table.
 
-What is of utmost importance to use when generating our moves is speed. In order to ensure the speed of our lookups in our table, we must be certain that, when flattening (also called hashing) our key into an index within the table, that index does not match any other indices within that table. When this happens, it is called a collision; and, while no the end of the world, does have additional space and time implications within our move generation algorithm. If we were to make a single hashing function in which we are certain there will never be any collisions with other values, it is called a *perfect* hashing function. In our application, this is actually a very feasible result.
+What is of utmost importance to us when implementing our hashing algorithm is speed. In order to ensure the speed of our lookups in our table, we must be certain that, when flattening (also called hashing) our key into an index within the table, that index does not match any other indices within that table. When this happens, it is called a collision; and, while not the end of the world, does have additional space and time implications within our move generation algorithm. If we were to make a single hashing function in which we are certain there will never be any collisions with other values, it is called a *perfect* hashing function. In our application, this is actually a very feasible expectation.
 
 Our hashing function can actually be summarized into a single line of pseudocode.
 
@@ -123,6 +123,6 @@ There is an additional benefit to using this hashing algorithm that I have yet t
 
 ## Conclusion
 
-There are many different ways you can write and develop the game of chess in code. This video is meant to take a peek at some necessary background if you wish to write a version of the game at a computationally efficient level; and, even then, there are many, many optimization improvements you can make for your internal representation to be even better. I simply hope that this serves as an adequate introduction to that side of chess computing.
+There are many different ways you can write and develop the game of chess in code. This video is meant to take a peek at some necessary background if you wish to write a version of the game at a computationally efficient level; and, even then, there are many, many optimization improvements you can make for your internal representation to be even better than the explanations I gave in this video. I simply hope that this serves as an adequate introduction to that side of chess computing.
 
 I hope you enjoyed the video, and have a wonderful day!
